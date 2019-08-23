@@ -78,6 +78,45 @@ run tar czvf /install-qmidiarp/qmidiarp-lv2.tar.gz ./lv2
 workdir /install-qmidiarp
 run tar tzvf qmidiarp-lv2.tar.gz
 
+# Build Guitarix proper w/o standalone app
+
+from ardour as guitarix-proper
+run apt install -y git
+run mkdir /build-guitarix-proper
+workdir /build-guitarix-proper
+run git clone https://github.com/moddevices/guitarix.git
+workdir guitarix/trunk
+run apt install -y intltool libzita-convolver-dev libzita-resampler-dev
+run apt install -y libeigen3-dev
+run ./waf configure --no-standalone --mod-lv2 --prefix=/usr
+run ./waf build
+run ./waf install
+run mkdir /install-guitarix-proper
+workdir /usr/lib
+run tar czvf /install-guitarix-proper/guitarix-proper.tar.gz ./lv2
+workdir /install-guitarix-proper
+run tar tzvf guitarix-proper.tar.gz
+
+# Build Guitarix extra LV2
+
+from ardour as guitarix
+
+run apt install -y git
+run mkdir /build-guitarix
+workdir /build-guitarix
+run git clone https://github.com/brummer10/GxPlugins.lv2.git
+workdir GxPlugins.lv2
+run git submodule init
+run git submodule update
+run apt install -y make g++ lv2-dev pkg-config
+run make
+run make install
+run mkdir /install-guitarix
+workdir /usr/lib
+run tar czvf /install-guitarix/guitarix-lv2.tar.gz ./lv2 
+workdir /install-guitarix
+run tar tzvf guitarix-lv2.tar.gz
+
 # Final assembly. Pull all parts together.
 
 from base-ubuntu as adls
@@ -120,6 +159,26 @@ copy --from=qmidiarp /install-qmidiarp /install-qmidiarp
 workdir /usr/lib
 run tar xzvf /install-qmidiarp/qmidiarp-lv2.tar.gz
 run rm -rf /install-qmidiarp
+
+# Install guitarix proper
+
+run mkdir /install-guitarix-proper
+
+copy --from=guitarix-proper /install-guitarix-proper /install-guitarix-proper
+workdir /usr/lib
+run tar xzvf /install-guitarix-proper/guitarix-proper.tar.gz
+run rm -rf /install-guitarix-proper
+run apt install -y libgxwmm-dev
+
+# Install guitarix extra LV2
+
+run mkdir /install-guitarix
+
+copy --from=guitarix /install-guitarix /install-guitarix
+workdir /usr/lib
+run tar xzvf /install-guitarix/guitarix-lv2.tar.gz
+run rm -rf /install-guitarix
+
 
 # Finally clean up
 
