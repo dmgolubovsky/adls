@@ -117,6 +117,22 @@ run tar czvf /install-guitarix/guitarix-lv2.tar.gz ./lv2
 workdir /install-guitarix
 run tar tzvf guitarix-lv2.tar.gz
 
+# Build Dexed VST
+
+from ardour as dexed
+
+run apt install -y git
+run mkdir /build-dexed
+workdir /build-dexed
+run git clone https://github.com/asb2m10/dexed.git
+workdir dexed
+run apt install -y freeglut3-dev g++ libasound2-dev libcurl4-openssl-dev
+run apt install -y libfreetype6-dev libx11-dev libxcomposite-dev
+run apt install -y libxcursor-dev libxinerama-dev libxrandr-dev mesa-common-dev make
+workdir Builds/Linux
+run make CONFIG=Release "CXXFLAGS=-D JUCE_ALSA=0"
+run install -Dm755 build/Dexed.so /usr/lib/vst/Dexed.so 
+
 # Final assembly. Pull all parts together.
 
 from base-ubuntu as adls
@@ -179,12 +195,18 @@ workdir /usr/lib
 run tar xzvf /install-guitarix/guitarix-lv2.tar.gz
 run rm -rf /install-guitarix
 
+# Install Dexed
+
+run mkdir -p /usr/lib/vst
+
+copy --from=dexed /usr/lib/vst/Dexed.so /usr/lib/vst
 
 # Finally clean up
 
 run apt-get clean autoclean
 run apt-get autoremove -y
 run rm -rf /var/lib/{apt,dpkg,cache,log}/
+run rm -rf /tmp/*
 
 from scratch
 
