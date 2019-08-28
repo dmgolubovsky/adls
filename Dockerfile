@@ -133,6 +133,39 @@ workdir Builds/Linux
 run make CONFIG=Release "CXXFLAGS=-D JUCE_ALSA=0"
 run install -Dm755 build/Dexed.so /usr/lib/vst/Dexed.so 
 
+# Get x42 plugins which supposedly do not require registration and can be downloaded as binaries
+
+from ardour as x42
+
+run apt install -y curl unzip wget
+
+run mkdir /install-x42
+workdir /install-x42
+run for proj in x42-autotune x42-balance x42-controlfilter x42-convolver x42-matrixmixer-8x8\
+                x42-midievent x42-midigen x42-mixtrix x42-nodelay x42-onsettrigger x42-plumbing \
+                x42-scope x42-spectra x42-stepseq-8x8 x42-xfade zero-convolver setBfree; do \
+                export X42_VERSION=$(wget -q -O - http://x42-plugins.com/x42/linux/${proj}.latest.txt) ;\
+                echo Downloading ${proj}-${X42_VERSION} ;\
+                rsync -a -q --partial rsync://x42-plugins.com/x42/linux/${proj}-${X42_VERSION}-x86_64.tar.gz \
+                "/install-x42/${proj}-${X42_VERSION}-x86_64.tar.gz" ; done
+
+workdir /install-x42
+run for f in *.tar.gz ; do tar xzvf $f ; done
+run for d in $(find . -type d -maxdepth 1 | grep -v '\.$') ; do (cd $d; cp -afpr . /usr/lib/lv2) ; done
+
+# Get x42 plugins that should be built from source
+
+from ardour as x42p
+
+run apt install -y git mesa-common-dev libglu1-mesa-dev libjack-jackd2-dev libzita-convolver-dev libltc-dev
+run mkdir -p /build-x42
+workdir /build-x42
+run git clone https://github.com/x42/x42-plugins.git
+workdir x42-plugins
+run make all
+run make install PREFIX=/usr
+run ls -l /usr/lib/lv2
+
 # Final assembly. Pull all parts together.
 
 from base-ubuntu as adls
@@ -201,15 +234,24 @@ run mkdir -p /usr/lib/vst
 
 copy --from=dexed /usr/lib/vst/Dexed.so /usr/lib/vst
 
+# Install x42 plugins
+
+run apt install -y libglu1-mesa
+copy --from=x42 /usr/lib/lv2 /usr/lib/lv2
+copy --from=x42p /usr/lib/lv2 /usr/lib/lv2
+
 # Finally clean up
 
 run apt-get clean autoclean
 run apt-get autoremove -y
-run rm -rf /var/lib/{apt,dpkg,cache,log}/
+run rm -rf /var/lib/apt
+run rm -rf /var/lib/dpkg
+run rm -rf /var/lib/cache
+run rm -rf /var/lib/log
 run rm -rf /tmp/*
+copy .qmidiarprc /root
 
 from scratch
 
 copy --from=adls / /
-copy .qmidiarprc /root
 
