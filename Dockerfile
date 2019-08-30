@@ -10,7 +10,9 @@ from ubuntu:18.04 as base-ubuntu
 
 run echo "APT::Get::Install-Recommends \"false\";" >> /etc/apt/apt.conf
 run echo "APT::Get::Install-Suggests \"false\";" >> /etc/apt/apt.conf
-
+run echo "APT::Install-Recommends \"false\";" >> /etc/apt/apt.conf
+run echo "APT::Install-Suggests \"false\";" >> /etc/apt/apt.conf
+r
 run apt -y update && apt -y upgrade
 run cp /etc/apt/sources.list /etc/apt/sources.list~
 run sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
@@ -141,9 +143,7 @@ run apt install -y curl unzip wget
 
 run mkdir /install-x42
 workdir /install-x42
-run for proj in x42-autotune x42-balance x42-controlfilter x42-convolver x42-matrixmixer-8x8\
-                x42-midievent x42-midigen x42-mixtrix x42-nodelay x42-onsettrigger x42-plumbing \
-                x42-scope x42-spectra x42-stepseq-8x8 x42-xfade zero-convolver setBfree; do \
+run for proj in x42-midievent x42-plumbing x42-scope zero-convolver setBfree; do \
                 export X42_VERSION=$(wget -q -O - http://x42-plugins.com/x42/linux/${proj}.latest.txt) ;\
                 echo Downloading ${proj}-${X42_VERSION} ;\
                 rsync -a -q --partial rsync://x42-plugins.com/x42/linux/${proj}-${X42_VERSION}-x86_64.tar.gz \
@@ -164,7 +164,28 @@ run git clone https://github.com/x42/x42-plugins.git
 workdir x42-plugins
 run make all
 run make install PREFIX=/usr
+workdir stepseq.lv2/misc
+run make
+run ./boxmaker 16 8
+run ./boxmaker 32 8
+workdir /build-x42/x42-plugins/stepseq.lv2
+run export RW=../robtk/ ; make clean ; make N_STEPS=16 && make install N_STEPS=16 PREFIX=/usr
+run export RW=../robtk/ ; make clean ; make N_STEPS=12 && make install N_STEPS=12 PREFIX=/usr
 run ls -l /usr/lib/lv2
+
+# Build Zynaddsubfx Fusion
+
+from ardour as zynfusion
+
+run apt install -y git build-essential git ruby libtool libmxml-dev automake cmake libfftw3-dev 
+run apt install -y libjack-jackd2-dev liblo-dev libz-dev libasound2-dev mesa-common-dev libgl1-mesa-dev 
+run apt install -y libglu1-mesa-dev libcairo2-dev libfontconfig1-dev bison sed make
+run mkdir /build-zynfusion
+workdir /build-zynfusion
+run git clone https://github.com/zynaddsubfx/zyn-fusion-build.git
+workdir zyn-fusion-build
+run grep -v "sudo echo sudo" build-linux.rb | grep -v "^build_demo_package\(\)" | sed 's/sudo//g' >build-linux-nosudo.rb
+run ruby build-linux-nosudo.rb
 
 # Final assembly. Pull all parts together.
 
@@ -239,6 +260,17 @@ copy --from=dexed /usr/lib/vst/Dexed.so /usr/lib/vst
 run apt install -y libglu1-mesa
 copy --from=x42 /usr/lib/lv2 /usr/lib/lv2
 copy --from=x42p /usr/lib/lv2 /usr/lib/lv2
+
+# Install zyn-fusion
+
+copy --from=zynfusion /build-zynfusion/zyn-fusion-build /build-zynfusion/zyn-fusion-build
+workdir /build-zynfusion/zyn-fusion-build 
+run tar -jxvf zyn-fusion-linux-64bit-3.0.3-patch1-release.tar.bz2
+workdir zyn-fusion
+run ln -sf /bin/false /usr/bin/pkg-config
+run bash ./install-linux.sh
+run rm -rf /build-zynfusion
+run apt install -y libmxml1 
 
 # Finally clean up
 
