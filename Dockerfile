@@ -8,15 +8,10 @@
 
 from ubuntu:18.04 as base-ubuntu
 
-run echo "APT::Get::Install-Recommends \"false\";" >> /etc/apt/apt.conf
-run echo "APT::Get::Install-Suggests \"false\";" >> /etc/apt/apt.conf
-run echo "APT::Install-Recommends \"false\";" >> /etc/apt/apt.conf
-run echo "APT::Install-Suggests \"false\";" >> /etc/apt/apt.conf
-r
 run apt -y update && apt -y upgrade
 run cp /etc/apt/sources.list /etc/apt/sources.list~
 run sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
-run apt-get -y update
+run apt -y update
 
 
 # Based on the dependencies, butld Ardour proper. In the end create a tar binary bundle.
@@ -93,11 +88,6 @@ run apt install -y libeigen3-dev
 run ./waf configure --no-standalone --mod-lv2 --prefix=/usr
 run ./waf build
 run ./waf install
-run mkdir /install-guitarix-proper
-workdir /usr/lib
-run tar czvf /install-guitarix-proper/guitarix-proper.tar.gz ./lv2
-workdir /install-guitarix-proper
-run tar tzvf guitarix-proper.tar.gz
 
 # Build Guitarix extra LV2
 
@@ -187,9 +177,43 @@ workdir zyn-fusion-build
 run grep -v "sudo echo sudo" build-linux.rb | grep -v "^build_demo_package\(\)" | sed 's/sudo//g' >build-linux-nosudo.rb
 run ruby build-linux-nosudo.rb
 
+# Build Calf plugins
+
+from ardour as calf
+
+run apt install -y libtool autoconf libexpat1-dev libglib2.0-dev libfluidsynth-dev libglade2-dev lv2-dev make
+run mkdir /build-calf
+workdir /build-calf
+run wget http://calf-studio-gear.org/files/calf-0.90.3.tar.gz
+run tar xzvf calf-0.90.3.tar.gz
+workdir calf-0.90.3
+run ./autogen.sh
+run ./configure --prefix=/usr/
+run make -j 2
+run make install
+
+# Build SooperLooper LV2
+
+from ardour as sooper
+
+run apt install -y git
+run mkdir /build-sl
+workdir /build-sl
+run git clone https://github.com/moddevices/sooperlooper-lv2-plugin.git
+workdir sooperlooper-lv2-plugin/sooperlooper
+run make 
+run make install INSTALL_PATH=/usr/lib/lv2
+
 # Final assembly. Pull all parts together.
 
 from base-ubuntu as adls
+
+# No recommended and/or suggested packages here
+
+run echo "APT::Get::Install-Recommends \"false\";" >> /etc/apt/apt.conf
+run echo "APT::Get::Install-Suggests \"false\";" >> /etc/apt/apt.conf
+run echo "APT::Install-Recommends \"false\";" >> /etc/apt/apt.conf
+run echo "APT::Install-Suggests \"false\";" >> /etc/apt/apt.conf
 
 # Install Ardour from the previously created bundle.
 
@@ -201,8 +225,8 @@ workdir Ardour-5.12.0-dbg-x86_64
 
 # Install some libs that were not picked by bundlers - mainly X11 related.
 
-run apt-get -y install gtk2-engines-pixbuf libxfixes3 libxinerama1 libxi6 libxrandr2 libxcursor1 libsuil-0-0
-run apt-get -y install libxcomposite1 libxdamage1 liblzo2-2 libkeyutils1 libasound2 libgl1 libusb-1.0-0
+run apt -y install gtk2-engines-pixbuf libxfixes3 libxinerama1 libxi6 libxrandr2 libxcursor1 libsuil-0-0
+run apt -y install libxcomposite1 libxdamage1 liblzo2-2 libkeyutils1 libasound2 libgl1 libusb-1.0-0
 
 # First time it will fail because one library was not copied properly.
 
@@ -232,12 +256,9 @@ run rm -rf /install-qmidiarp
 
 # Install guitarix proper
 
-run mkdir /install-guitarix-proper
+copy --from=guitarix-proper /usr/lib/lv2 /usr/lib/lv2
+copy --from=guitarix-proper /usr/share /usr/share
 
-copy --from=guitarix-proper /install-guitarix-proper /install-guitarix-proper
-workdir /usr/lib
-run tar xzvf /install-guitarix-proper/guitarix-proper.tar.gz
-run rm -rf /install-guitarix-proper
 run apt install -y libgxwmm-dev
 
 # Install guitarix extra LV2
@@ -271,6 +292,17 @@ run ln -sf /bin/false /usr/bin/pkg-config
 run bash ./install-linux.sh
 run rm -rf /build-zynfusion
 run apt install -y libmxml1 
+
+# Install Calf plugins
+
+run apt install -y libfluidsynth-dev
+copy --from=calf /usr/lib/calf /usr/lib/calf
+copy --from=calf /usr/share/calf /usr/share/calf
+copy --from=calf /usr/lib/lv2 /usr/lib/lv2
+
+# Install SooperLooper LV2
+
+copy --from=sooper /usr/lib/lv2 /usr/lib/lv2
 
 # Finally clean up
 
