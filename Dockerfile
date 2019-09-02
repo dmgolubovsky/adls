@@ -133,7 +133,7 @@ run apt install -y curl unzip wget
 
 run mkdir /install-x42
 workdir /install-x42
-run for proj in x42-midievent x42-plumbing x42-scope zero-convolver setBfree; do \
+run for proj in x42-avldrums x42-midievent x42-plumbing x42-scope zero-convolver setBfree; do \
                 export X42_VERSION=$(wget -q -O - http://x42-plugins.com/x42/linux/${proj}.latest.txt) ;\
                 echo Downloading ${proj}-${X42_VERSION} ;\
                 rsync -a -q --partial rsync://x42-plugins.com/x42/linux/${proj}-${X42_VERSION}-x86_64.tar.gz \
