@@ -204,6 +204,39 @@ workdir sooperlooper-lv2-plugin/sooperlooper
 run make 
 run make install INSTALL_PATH=/usr/lib/lv2
 
+# Build helm synthesizer
+
+from ardour as helm
+
+run apt install -y git mesa-common-dev libglvnd-dev
+run mkdir /build-helm
+workdir /build-helm
+run git clone https://github.com/mtytel/helm.git
+workdir helm
+run make lv2
+run make vst
+run make install_lv2
+run make install_vst
+
+# build amSynth
+
+from ardour as amsynth
+
+run apt install -y git autoconf automake libtool cmake intltool liboscpack-dev dssi-dev
+run mkdir /build-amsynth
+workdir /build-amsynth
+run git clone https://github.com/amsynth/amsynth.git
+workdir amsynth
+run git checkout release-1.9.0
+run autoreconf -i
+run libtoolize --force
+run intltoolize
+run ./configure --prefix=/usr --with-alsa --with-lv2 --with-vst --without-jack --with-gui --without-pandoc \
+                --disable-dependency-tracking
+run make
+run make install
+
+
 # Final assembly. Pull all parts together.
 
 from base-ubuntu as adls
@@ -303,6 +336,18 @@ copy --from=calf /usr/lib/lv2 /usr/lib/lv2
 # Install SooperLooper LV2
 
 copy --from=sooper /usr/lib/lv2 /usr/lib/lv2
+
+# Install helm
+
+copy --from=helm /usr/share/helm /usr/share/helm
+copy --from=helm /usr/lib/lv2 /usr/lib/lv2
+copy --from=helm /usr/lib/lxvst /usr/lib/lxvst
+
+# Install amsynth
+
+copy --from=amsynth /usr/share/amsynth /usr/share/amsynth
+copy --from=amsynth /usr/lib/lv2 /usr/lib/lv2
+copy --from=amsynth /usr/lib/vst /usr/lib/vst
 
 # Finally clean up
 
