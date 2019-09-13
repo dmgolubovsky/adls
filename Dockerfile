@@ -236,6 +236,20 @@ run ./configure --prefix=/usr --with-alsa --with-lv2 --with-vst --without-jack -
 run make
 run make install
 
+# Build Carla
+
+from ardour as carla
+
+run apt install -y git python3-pyqt5.qtsvg python3-rdflib pyqt5-dev-tools \
+                   libmagic-dev liblo-dev libasound2-dev libx11-dev \
+                   libgtk2.0-dev qtbase5-dev libfluidsynth-dev
+run mkdir /build-carla
+workdir /build-carla
+run git clone https://github.com/falkTX/Carla.git
+workdir Carla
+run git checkout v2.0.0
+run make PREFIX=/usr
+run make install PREFIX=/usr
 
 # Final assembly. Pull all parts together.
 
@@ -348,6 +362,14 @@ copy --from=helm /usr/lib/lxvst /usr/lib/lxvst
 copy --from=amsynth /usr/share/amsynth /usr/share/amsynth
 copy --from=amsynth /usr/lib/lv2 /usr/lib/lv2
 copy --from=amsynth /usr/lib/vst /usr/lib/vst
+
+# Install Carla
+
+run apt install -y libmagic1 python3 libglib2.0-dev-bin python3-pyqt5.qtsvg python3-rdflib
+copy --from=carla /usr/lib/carla /usr/lib/carla
+copy --from=carla /usr/share/carla /usr/share/carla
+copy --from=carla /usr/lib/lv2 /usr/lib/lv2
+copy --from=carla /usr/lib/vst /usr/lib/vst
 
 # Finally clean up
 
