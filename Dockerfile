@@ -133,15 +133,15 @@ run apt install -y curl unzip wget
 
 run mkdir /install-x42
 workdir /install-x42
-run for proj in x42-avldrums x42-midievent x42-plumbing x42-scope zero-convolver setBfree; do \
+run (for proj in x42-avldrums x42-midievent x42-plumbing x42-scope zero-convolver setBfree; do \
                 export X42_VERSION=$(wget -q -O - http://x42-plugins.com/x42/linux/${proj}.latest.txt) ;\
                 echo Downloading ${proj}-${X42_VERSION} ;\
                 rsync -a -q --partial rsync://x42-plugins.com/x42/linux/${proj}-${X42_VERSION}-x86_64.tar.gz \
-                "/install-x42/${proj}-${X42_VERSION}-x86_64.tar.gz" ; done
+                "/install-x42/${proj}-${X42_VERSION}-x86_64.tar.gz" ; done) || true
 
 workdir /install-x42
-run for f in *.tar.gz ; do tar xzvf $f ; done
-run for d in $(find . -type d -maxdepth 1 | grep -v '\.$') ; do (cd $d; cp -afpr . /usr/lib/lv2) ; done
+run (for f in *.tar.gz ; do tar xzvf $f ; done) || true
+run (for d in $(find . -type d -maxdepth 1 | grep -v '\.$') ; do (cd $d; cp -afpr . /usr/lib/lv2) ; done) || true
 
 # Get x42 plugins that should be built from source
 
@@ -251,6 +251,21 @@ run git checkout v2.0.0
 run make PREFIX=/usr
 run make install PREFIX=/usr
 
+# Build Drumgizmo
+
+from ardour as drumgizmo
+
+run apt install -y build-essential autoconf  automake libtool \
+                  lv2-dev xorg-dev libsndfile1-dev libzita-resampler-dev
+run mkdir /build-drumgizmo
+workdir /build-drumgizmo
+run wget http://www.drumgizmo.org/releases/drumgizmo-0.9.17/drumgizmo-0.9.17.tar.gz
+run tar xzvf drumgizmo-0.9.17.tar.gz
+workdir drumgizmo-0.9.17
+run ./configure --prefix=/usr --with-lv2dir=/usr/lib/lv2 --enable-lv2 --disable-cli
+run make
+run make install
+
 # Final assembly. Pull all parts together.
 
 from base-ubuntu as adls
@@ -333,6 +348,7 @@ copy --from=x42p /usr/lib/lv2 /usr/lib/lv2
 
 copy --from=zynfusion /build-zynfusion/zyn-fusion-build /build-zynfusion/zyn-fusion-build
 workdir /build-zynfusion/zyn-fusion-build 
+run find . -name '*.tar.bz2'
 run tar -jxvf zyn-fusion-linux-64bit-3.0.3-patch1-release.tar.bz2
 workdir zyn-fusion
 run ln -sf /bin/false /usr/bin/pkg-config
@@ -368,8 +384,11 @@ copy --from=amsynth /usr/lib/vst /usr/lib/vst
 run apt install -y libmagic1 python3 libglib2.0-dev-bin python3-pyqt5.qtsvg python3-rdflib
 copy --from=carla /usr/lib/carla /usr/lib/carla
 copy --from=carla /usr/share/carla /usr/share/carla
-copy --from=carla /usr/lib/lv2 /usr/lib/lv2
 copy --from=carla /usr/lib/vst /usr/lib/vst
+
+# Install Drumgizmo
+
+copy --from=drumgizmo /usr/lib/lv2 /usr/lib/lv2
 
 # Finally clean up
 
