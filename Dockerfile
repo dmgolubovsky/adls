@@ -388,6 +388,7 @@ copy --from=carla /usr/lib/vst /usr/lib/vst
 
 # Install Drumgizmo
 
+run apt install -y libzita-resampler1
 copy --from=drumgizmo /usr/lib/lv2 /usr/lib/lv2
 
 # Finally clean up
