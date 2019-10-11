@@ -8,25 +8,32 @@
 
 from ubuntu:18.04 as base-ubuntu
 
-run apt -y update && apt -y upgrade
 run cp /etc/apt/sources.list /etc/apt/sources.list~
 run sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
 run apt -y update
+run apt install -y --no-install-recommends software-properties-common apt-utils
+run add-apt-repository ppa:apt-fast/stable
+run apt -y update
+run env DEBIAN_FRONTEND=noninteractive apt-get -y install apt-fast
+run echo debconf apt-fast/maxdownloads string 16 | debconf-set-selections
+run echo debconf apt-fast/dlflag boolean true | debconf-set-selections
+run echo debconf apt-fast/aptmanager string apt-get | debconf-set-selections
 
+run apt-fast -y update && apt-fast -y upgrade
 
 # Based on the dependencies, butld Ardour proper. In the end create a tar binary bundle.
 
 from base-ubuntu as ardour
 
-run apt install -y libboost-dev libasound2-dev libglibmm-2.4-dev libsndfile1-dev
-run apt install -y libcurl4-gnutls-dev libarchive-dev liblo-dev libtag-extras-dev
-run apt install -y vamp-plugin-sdk librubberband-dev libudev-dev libnfft3-dev
-run apt install -y libaubio-dev libxml2-dev libusb-1.0-0-dev
-run apt install -y libpangomm-1.4-dev liblrdf0-dev libsamplerate0-dev
-run apt install -y libserd-dev libsord-dev libsratom-dev liblilv-dev
-run apt install -y libgtkmm-2.4-dev libsuil-dev
+run apt-fast install -y libboost-dev libasound2-dev libglibmm-2.4-dev libsndfile1-dev
+run apt-fast install -y libcurl4-gnutls-dev libarchive-dev liblo-dev libtag-extras-dev
+run apt-fast install -y vamp-plugin-sdk librubberband-dev libudev-dev libnfft3-dev
+run apt-fast install -y libaubio-dev libxml2-dev libusb-1.0-0-dev
+run apt-fast install -y libpangomm-1.4-dev liblrdf0-dev libsamplerate0-dev
+run apt-fast install -y libserd-dev libsord-dev libsratom-dev liblilv-dev
+run apt-fast install -y libgtkmm-2.4-dev libsuil-dev
 
-run apt install -y wget curl
+run apt-fast install -y wget curl
 
 run mkdir /build-ardour
 workdir /build-ardour
@@ -48,7 +55,7 @@ workdir /build-ardour/ardour-5.12.0
 run ./waf configure --no-phone-home --with-backend=alsa
 run ./waf build -j4
 run ./waf install
-run apt install -y chrpath rsync unzip
+run apt-fast install -y chrpath rsync unzip
 run ln -sf /bin/false /usr/bin/curl
 workdir tools/linux_packaging
 run ./build --public --strip some
@@ -59,8 +66,8 @@ run ./package --public --singlearch
 
 from  base-ubuntu as qmidiarp
 
-run apt install -y git autoconf automake libtool libasound2-dev qt5-default
-run apt install -y g++ pkg-config lv2-dev
+run apt-fast install -y git autoconf automake libtool libasound2-dev qt5-default
+run apt-fast install -y g++ pkg-config lv2-dev
 run mkdir /build-qmidiarp
 workdir /build-qmidiarp
 run git clone https://github.com/emuse/qmidiarp.git
@@ -78,13 +85,13 @@ run tar tzvf qmidiarp-lv2.tar.gz
 # Build Guitarix proper w/o standalone app
 
 from ardour as guitarix-proper
-run apt install -y git
+run apt-fast install -y git
 run mkdir /build-guitarix-proper
 workdir /build-guitarix-proper
 run git clone https://github.com/moddevices/guitarix.git
 workdir guitarix/trunk
-run apt install -y intltool libzita-convolver-dev libzita-resampler-dev
-run apt install -y libeigen3-dev
+run apt-fast install -y intltool libzita-convolver-dev libzita-resampler-dev
+run apt-fast install -y libeigen3-dev
 run ./waf configure --no-standalone --mod-lv2 --prefix=/usr
 run ./waf build
 run ./waf install
@@ -93,14 +100,14 @@ run ./waf install
 
 from ardour as guitarix
 
-run apt install -y git
+run apt-fast install -y git
 run mkdir /build-guitarix
 workdir /build-guitarix
 run git clone https://github.com/brummer10/GxPlugins.lv2.git
 workdir GxPlugins.lv2
 run git submodule init
 run git submodule update
-run apt install -y make g++ lv2-dev pkg-config
+run apt-fast install -y make g++ lv2-dev pkg-config
 run make
 run make install
 run mkdir /install-guitarix
@@ -113,14 +120,14 @@ run tar tzvf guitarix-lv2.tar.gz
 
 from ardour as dexed
 
-run apt install -y git
+run apt-fast install -y git
 run mkdir /build-dexed
 workdir /build-dexed
 run git clone https://github.com/asb2m10/dexed.git
 workdir dexed
-run apt install -y freeglut3-dev g++ libasound2-dev libcurl4-openssl-dev
-run apt install -y libfreetype6-dev libx11-dev libxcomposite-dev
-run apt install -y libxcursor-dev libxinerama-dev libxrandr-dev mesa-common-dev make
+run apt-fast install -y freeglut3-dev g++ libasound2-dev libcurl4-openssl-dev
+run apt-fast install -y libfreetype6-dev libx11-dev libxcomposite-dev
+run apt-fast install -y libxcursor-dev libxinerama-dev libxrandr-dev mesa-common-dev make
 workdir Builds/Linux
 run make CONFIG=Release "CXXFLAGS=-D JUCE_ALSA=0"
 run install -Dm755 build/Dexed.so /usr/lib/vst/Dexed.so 
@@ -129,25 +136,25 @@ run install -Dm755 build/Dexed.so /usr/lib/vst/Dexed.so
 
 from ardour as x42
 
-run apt install -y curl unzip wget
+run apt-fast install -y curl unzip wget
 
 run mkdir /install-x42
 workdir /install-x42
-run (for proj in x42-avldrums x42-midievent x42-plumbing x42-scope zero-convolver setBfree; do \
+run for proj in x42-avldrums x42-midievent x42-plumbing x42-scope zero-convolver setBfree; do \
                 export X42_VERSION=$(wget -q -O - http://x42-plugins.com/x42/linux/${proj}.latest.txt) ;\
                 echo Downloading ${proj}-${X42_VERSION} ;\
                 rsync -a -q --partial rsync://x42-plugins.com/x42/linux/${proj}-${X42_VERSION}-x86_64.tar.gz \
-                "/install-x42/${proj}-${X42_VERSION}-x86_64.tar.gz" ; done) || true
+                "/install-x42/${proj}-${X42_VERSION}-x86_64.tar.gz" ; done
 
 workdir /install-x42
-run (for f in *.tar.gz ; do tar xzvf $f ; done) || true
-run (for d in $(find . -type d -maxdepth 1 | grep -v '\.$') ; do (cd $d; cp -afpr . /usr/lib/lv2) ; done) || true
+run for f in *.tar.gz ; do tar xzvf $f ; done
+run for d in $(find . -type d -maxdepth 1 | grep -v '\.$') ; do (cd $d; cp -afpr . /usr/lib/lv2) ; done
 
 # Get x42 plugins that should be built from source
 
 from ardour as x42p
 
-run apt install -y git mesa-common-dev libglu1-mesa-dev libjack-jackd2-dev libzita-convolver-dev libltc-dev
+run apt-fast install -y git mesa-common-dev libglu1-mesa-dev libjack-jackd2-dev libzita-convolver-dev libltc-dev
 run mkdir -p /build-x42
 workdir /build-x42
 run git clone https://github.com/x42/x42-plugins.git
@@ -167,9 +174,9 @@ run ls -l /usr/lib/lv2
 
 from ardour as zynfusion
 
-run apt install -y git build-essential git ruby libtool libmxml-dev automake cmake libfftw3-dev 
-run apt install -y libjack-jackd2-dev liblo-dev libz-dev libasound2-dev mesa-common-dev libgl1-mesa-dev 
-run apt install -y libglu1-mesa-dev libcairo2-dev libfontconfig1-dev bison sed make
+run apt-fast install -y git build-essential git ruby libtool libmxml-dev automake cmake libfftw3-dev 
+run apt-fast install -y libjack-jackd2-dev liblo-dev libz-dev libasound2-dev mesa-common-dev libgl1-mesa-dev 
+run apt-fast install -y libglu1-mesa-dev libcairo2-dev libfontconfig1-dev bison sed make
 run mkdir /build-zynfusion
 workdir /build-zynfusion
 run git clone https://github.com/zynaddsubfx/zyn-fusion-build.git
@@ -181,7 +188,7 @@ run ruby build-linux-nosudo.rb
 
 from ardour as calf
 
-run apt install -y libtool autoconf libexpat1-dev libglib2.0-dev libfluidsynth-dev libglade2-dev lv2-dev make
+run apt-fast install -y libtool autoconf libexpat1-dev libglib2.0-dev libfluidsynth-dev libglade2-dev lv2-dev make
 run mkdir /build-calf
 workdir /build-calf
 run wget http://calf-studio-gear.org/files/calf-0.90.3.tar.gz
@@ -196,7 +203,7 @@ run make install
 
 from ardour as sooper
 
-run apt install -y git
+run apt-fast install -y git
 run mkdir /build-sl
 workdir /build-sl
 run git clone https://github.com/moddevices/sooperlooper-lv2-plugin.git
@@ -208,7 +215,7 @@ run make install INSTALL_PATH=/usr/lib/lv2
 
 from ardour as helm
 
-run apt install -y git mesa-common-dev libglvnd-dev
+run apt-fast install -y git mesa-common-dev libglvnd-dev
 run mkdir /build-helm
 workdir /build-helm
 run git clone https://github.com/mtytel/helm.git
@@ -222,7 +229,7 @@ run make install_vst
 
 from ardour as amsynth
 
-run apt install -y git autoconf automake libtool cmake intltool liboscpack-dev dssi-dev
+run apt-fast install -y git autoconf automake libtool cmake intltool liboscpack-dev dssi-dev
 run mkdir /build-amsynth
 workdir /build-amsynth
 run git clone https://github.com/amsynth/amsynth.git
@@ -240,7 +247,7 @@ run make install
 
 from ardour as carla
 
-run apt install -y git python3-pyqt5.qtsvg python3-rdflib pyqt5-dev-tools \
+run apt-fast install -y git python3-pyqt5.qtsvg python3-rdflib pyqt5-dev-tools \
                    libmagic-dev liblo-dev libasound2-dev libx11-dev \
                    libgtk2.0-dev qtbase5-dev libfluidsynth-dev
 run mkdir /build-carla
@@ -255,7 +262,7 @@ run make install PREFIX=/usr
 
 from ardour as drumgizmo
 
-run apt install -y build-essential autoconf  automake libtool \
+run apt-fast install -y build-essential autoconf  automake libtool \
                   lv2-dev xorg-dev libsndfile1-dev libzita-resampler-dev
 run mkdir /build-drumgizmo
 workdir /build-drumgizmo
@@ -321,7 +328,7 @@ run rm -rf /install-qmidiarp
 copy --from=guitarix-proper /usr/lib/lv2 /usr/lib/lv2
 copy --from=guitarix-proper /usr/share /usr/share
 
-run apt install -y libgxwmm-dev
+run apt-fast install -y libgxwmm-dev
 
 # Install guitarix extra LV2
 
@@ -340,7 +347,7 @@ copy --from=dexed /usr/lib/vst/Dexed.so /usr/lib/vst
 
 # Install x42 plugins
 
-run apt install -y libglu1-mesa
+run apt-fast install -y libglu1-mesa
 copy --from=x42 /usr/lib/lv2 /usr/lib/lv2
 copy --from=x42p /usr/lib/lv2 /usr/lib/lv2
 
@@ -354,11 +361,11 @@ workdir zyn-fusion
 run ln -sf /bin/false /usr/bin/pkg-config
 run bash ./install-linux.sh
 run rm -rf /build-zynfusion
-run apt install -y libmxml1 
+run apt-fast install -y libmxml1 
 
 # Install Calf plugins
 
-run apt install -y libfluidsynth-dev
+run apt-fast install -y libfluidsynth-dev
 copy --from=calf /usr/lib/calf /usr/lib/calf
 copy --from=calf /usr/share/calf /usr/share/calf
 copy --from=calf /usr/lib/lv2 /usr/lib/lv2
@@ -381,18 +388,19 @@ copy --from=amsynth /usr/lib/vst /usr/lib/vst
 
 # Install Carla
 
-run apt install -y libmagic1 python3 libglib2.0-dev-bin python3-pyqt5.qtsvg python3-rdflib
+run apt-fast install -y libmagic1 python3 libglib2.0-dev-bin python3-pyqt5.qtsvg python3-rdflib
 copy --from=carla /usr/lib/carla /usr/lib/carla
 copy --from=carla /usr/share/carla /usr/share/carla
 copy --from=carla /usr/lib/vst /usr/lib/vst
 
 # Install Drumgizmo
 
-run apt install -y libzita-resampler1
+run apt-fast install -y libzita-resampler1
 copy --from=drumgizmo /usr/lib/lv2 /usr/lib/lv2
 
 # Finally clean up
 
+run apt-fast clean
 run apt-get clean autoclean
 run apt-get autoremove -y
 run rm -rf /var/lib/apt
