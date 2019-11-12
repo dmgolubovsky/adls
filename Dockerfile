@@ -19,6 +19,8 @@ run echo debconf apt-fast/maxdownloads string 16 | debconf-set-selections
 run echo debconf apt-fast/dlflag boolean true | debconf-set-selections
 run echo debconf apt-fast/aptmanager string apt-get | debconf-set-selections
 
+run echo "MIRRORS=( 'http://archive.ubuntu.com/ubuntu, http://de.archive.ubuntu.com/ubuntu, http://ftp.halifax.rwth-aachen.de/ubuntu, http://ftp.uni-kl.de/pub/linux/ubuntu, http://mirror.informatik.uni-mannheim.de/pub/linux/distributions/ubuntu/' )" >> /etc/apt-fast.conf
+
 run apt-fast -y update && apt-fast -y upgrade
 
 # Based on the dependencies, butld Ardour proper. In the end create a tar binary bundle.
