@@ -127,6 +127,7 @@ run mkdir /build-dexed
 workdir /build-dexed
 run git clone https://github.com/asb2m10/dexed.git
 workdir dexed
+run git checkout v0.9.4
 run apt-fast install -y freeglut3-dev g++ libasound2-dev libcurl4-openssl-dev
 run apt-fast install -y libfreetype6-dev libx11-dev libxcomposite-dev
 run apt-fast install -y libxcursor-dev libxinerama-dev libxrandr-dev mesa-common-dev make
