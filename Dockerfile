@@ -12,7 +12,7 @@ run cp /etc/apt/sources.list /etc/apt/sources.list~
 run sed -Ei 's/^# deb-src /deb-src /' /etc/apt/sources.list
 run apt -y update
 run apt install -y --no-install-recommends software-properties-common apt-utils
-run add-apt-repository ppa:apt-fast/stable
+run add-apt-repository -y ppa:apt-fast/stable
 run apt -y update
 run env DEBIAN_FRONTEND=noninteractive apt-get -y install apt-fast
 run echo debconf apt-fast/maxdownloads string 16 | debconf-set-selections
